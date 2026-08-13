@@ -1,0 +1,92 @@
+```yaml
+name: Terraform Azure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Terraform environment"
+        required: true
+        type: choice
+        options:
+          - preprod
+          - prod
+        default: preprod
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+
+jobs:
+
+  terraform:
+    name: Terraform ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: environments/${{ inputs.environment }}
+
+    steps:
+
+      # --------------------------------------------------
+      # Checkout
+      # --------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Azure Login using OIDC
+      # --------------------------------------------------
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # --------------------------------------------------
+      # Install Terraform
+      # --------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # --------------------------------------------------
+      # Terraform Format Check
+      # --------------------------------------------------
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      # --------------------------------------------------
+      # Terraform Init
+      # --------------------------------------------------
+      - name: Terraform Init
+        run: terraform init
+
+      # --------------------------------------------------
+      # Terraform Validate
+      # --------------------------------------------------
+      - name: Terraform Validate
+        run: terraform validate
+
+      # --------------------------------------------------
+      # Terraform Plan
+      # --------------------------------------------------
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      # --------------------------------------------------
+      # Terraform Apply
+      # --------------------------------------------------
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+```
