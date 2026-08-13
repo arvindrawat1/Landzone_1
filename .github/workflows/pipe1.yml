@@ -41,7 +41,3 @@ jobs:
       - name: Terraform Plan
         working-directory: environments/preprod
         run: terraform plan -out=tfplan
-
-      - name: Terraform Apply
-        working-directory: environments/preprod
-        run: terraform apply -auto-approve tfplan
